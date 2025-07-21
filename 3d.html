@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accounting Book</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>📒 Ytmixup24 Accounting Book</h1>
+
+    <form id="transaction-form">
+      <input type="date" id="date" required>
+      <input type="text" id="description" placeholder="Description" required>
+      <input type="number" id="amount" placeholder="Amount" required>
+      <select id="type" required>
+        <option value="credit">Credit</option>
+        <option value="debit">Debit</option>
+      </select>
+      <button type="submit">Add Transaction</button>
+    </form>
+
+    <div class="summary">
+      <p>Total Credit: ₹<span id="total-credit">0</span></p>
+      <p>Total Debit: ₹<span id="total-debit">0</span></p>
+      <p>Balance: ₹<span id="balance">0</span></p>
+    </div>
+
+    <table id="transaction-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Amount</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
