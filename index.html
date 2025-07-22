@@ -1,45 +1,357 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Accounting Book</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Accounting Software</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif;}
+    body {background: #f4f4f4; padding: 20px;}
+    h1,h2,h3 {text-align: center; margin-bottom: 1em;}
+    .hidden {display: none;}
+    .container {max-width: 1000px; margin: auto;}
+    .login-box, .create-box, .dashboard, .party-area {
+      background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    input, button, select, textarea {
+      padding: 10px; margin-bottom: 10px; width: 100%; border-radius: 5px; border: 1px solid #ccc;
+    }
+    button {cursor: pointer; transition: 0.3s;}
+    button:hover {background: #333; color: white;}
+    .navbar {display: flex; justify-content: space-between; margin-bottom: 20px;}
+    .folder-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .folder {
+      background: linear-gradient(145deg, #f0f0f0, #ffffff);
+      padding: 20px; border-radius: 10px;
+      box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
+      text-align: center;
+      cursor: pointer; font-weight: bold;
+    }
+    .splash {
+      animation: scaleIn 2s ease-out;
+      font-size: 2em; text-align: center; font-weight: bold;
+      margin-top: 100px;
+    }
+    @keyframes scaleIn {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .logout-box {
+      position: relative;
+    }
+    .logout-options {
+      position: absolute;
+      top: 40px;
+      left: 0;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      display: none;
+    }
+    .logout-options button {
+      width: 100%;
+    }
+    /* Table Styling */
+    table {
+      width: 100%; border-collapse: collapse; margin-top: 10px;
+    }
+    td, th {
+      border: 1px solid #ddd; padding: 8px; text-align: center;
+    }
+    th {background: #333; color: white;}
+    .partyLedgerBox {margin-bottom: 36px;}
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>📒 Ytmixup24 Accounting Book</h1>
+<div class="container">
+  <div id="splash" class="splash">👨‍💻 Created by Shubham Singh</div>
 
-    <form id="transaction-form">
-      <input type="date" id="date" required>
-      <input type="text" id="description" placeholder="Description" required>
-      <input type="number" id="amount" placeholder="Amount" required>
-      <select id="type" required>
-        <option value="credit">Credit</option>
-        <option value="debit">Debit</option>
-      </select>
-      <button type="submit">Add Transaction</button>
-    </form>
-
-    <div class="summary">
-      <p>Total Credit: ₹<span id="total-credit">0</span></p>
-      <p>Total Debit: ₹<span id="total-debit">0</span></p>
-      <p>Balance: ₹<span id="balance">0</span></p>
-    </div>
-
-    <table id="transaction-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Description</th>
-          <th>Amount</th>
-          <th>Type</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <!-- Login Area -->
+  <div id="loginArea" class="login-box hidden">
+    <h2>Login</h2>
+    <input type="text" id="loginUser" placeholder="User ID" />
+    <input type="password" id="loginPass" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <button onclick="showCreate()">Create Account</button>
   </div>
 
-  <script src="script.js"></script>
+  <!-- Create Account -->
+  <div id="createArea" class="create-box hidden">
+    <h2>Create Account</h2>
+    <input type="text" id="newUser" placeholder="New User ID" />
+    <input type="password" id="newPass" placeholder="Create Password" />
+    <button onclick="createAccount()">Save</button>
+    <button onclick="backToLogin()">Back</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="dashboard hidden">
+    <div class="navbar">
+      <div class="logout-box">
+        <button onclick="toggleLogout()"><span id="usernameDisplay"></span> ⏷</button>
+        <div class="logout-options" id="logoutMenu">
+          <button onclick="changePassword()">Change Password</button>
+          <button onclick="logout()">Logout</button>
+        </div>
+      </div>
+      <button onclick="backToMain()">🔙 Back</button>
+    </div>
+    <h2>Accounting Dashboard</h2>
+    <div class="folder-grid">
+      <div class="folder" onclick="showCreateParty()">📁 Create Party</div>
+      <div class="folder" onclick="showPartyLedger()">📁 Open Party Ledger</div>
+      <div class="folder" onclick="showPartyEntry()">📁 Party-wise Entry</div>
+      <div class="folder" onclick="showEditParty()">📁 Edit/Delete Party</div>
+    </div>
+  </div>
+
+  <!-- CREATE PARTY MODULE -->
+  <div id="createPartyArea" class="party-area hidden">
+    <h3>Create Party</h3>
+    <input type="text" id="partyName" placeholder="Party Name" />
+    <input type="number" id="openingBalance" placeholder="Opening Balance" />
+    <button onclick="createParty()">Save</button>
+    <button onclick="backToMain()">Back</button>
+  </div>
+
+  <!-- LEDGER MODULE -->
+  <div id="ledgerArea" class="party-area hidden">
+    <h3>Party Ledger</h3>
+    <div id="ledgerContent"></div>
+    <button onclick="backToMain()">Back</button>
+  </div>
+
+  <!-- ENTRY MODULE -->
+  <div id="entryArea" class="party-area hidden">
+    <h3>Party Entry</h3>
+    <select id="entryParty"></select>
+    <textarea id="narration" placeholder="Narration"></textarea>
+    <input type="number" id="debit" placeholder="Debit" />
+    <input type="number" id="credit" placeholder="Credit" />
+    <button onclick="addEntry()">Save</button>
+    <button onclick="backToMain()">Back</button>
+  </div>
+
+  <!-- EDIT MODULE -->
+  <div id="editArea" class="party-area hidden">
+    <h3>Edit/Delete Party</h3>
+    <select id="editParty" onchange="loadEditableParty()"></select>
+    <input type="text" id="editPartyName" placeholder="Edit Party Name" />
+    <button onclick="saveEditedParty()">Save Changes</button>
+    <button onclick="deleteParty()">Delete Party</button>
+    <button onclick="backToMain()">Back</button>
+  </div>
+</div>
+<script>
+  let users = JSON.parse(localStorage.getItem('users')) || {};
+  let parties = JSON.parse(localStorage.getItem('parties')) || {};
+  let loggedIn = localStorage.getItem('loggedIn');
+
+  window.onload = () => {
+    setTimeout(() => {
+      document.getElementById("splash").classList.add("hidden");
+      if (loggedIn) return showDashboard();
+      document.getElementById("loginArea").classList.remove("hidden");
+    }, 2000);
+    updateDropdowns();
+  };
+
+  function showCreate() {
+    document.getElementById("loginArea").classList.add("hidden");
+    document.getElementById("createArea").classList.remove("hidden");
+  }
+  function backToLogin() {
+    document.getElementById("createArea").classList.add("hidden");
+    document.getElementById("loginArea").classList.remove("hidden");
+  }
+  function createAccount() {
+    let user = newUser.value.trim();
+    let pass = newPass.value.trim();
+    if (!user || !pass) return alert("Fill all fields.");
+    if (users[user]) return alert("User already exists!");
+    users[user] = pass;
+    localStorage.setItem('users', JSON.stringify(users));
+    alert("User created! Login now.");
+    backToLogin();
+  }
+  function login() {
+    let user = loginUser.value.trim();
+    let pass = loginPass.value.trim();
+    if (users[user] === pass) {
+      localStorage.setItem('loggedIn', user);
+      showDashboard();
+    } else {
+      alert("Invalid credentials!");
+    }
+  }
+  function toggleLogout() {
+    let menu = document.getElementById("logoutMenu");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  }
+  function logout() {
+    localStorage.removeItem("loggedIn");
+    location.reload();
+  }
+  function changePassword() {
+    let newPass = prompt("Enter new password");
+    if (newPass) {
+      users[loggedIn] = newPass;
+      localStorage.setItem('users', JSON.stringify(users));
+      alert("Password updated");
+    }
+  }
+  function showDashboard() {
+    document.querySelectorAll(".login-box, .create-box, .party-area").forEach(el => el.classList.add("hidden"));
+    document.getElementById("dashboard").classList.remove("hidden");
+    document.getElementById("usernameDisplay").innerText = localStorage.getItem('loggedIn');
+  }
+  function backToMain() {
+    document.querySelectorAll(".party-area").forEach(el => el.classList.add("hidden"));
+    document.getElementById("dashboard").classList.remove("hidden");
+    updateDropdowns();
+  }
+  // Create Party
+  function createParty() {
+    let name = partyName.value.trim();
+    let bal = parseFloat(openingBalance.value) || 0;
+    if (!name) return alert("Enter party name.");
+    if (!parties[name]) {
+      parties[name] = {
+        opening: bal,
+        entries: []
+      };
+      localStorage.setItem("parties", JSON.stringify(parties));
+      alert("Party created");
+      partyName.value = "";
+      openingBalance.value = "";
+      updateDropdowns();
+    } else {
+      alert("Party already exists!");
+    }
+  }
+
+  function showCreateParty() {
+    document.getElementById("dashboard").classList.add("hidden");
+    document.getElementById("createPartyArea").classList.remove("hidden");
+  }
+
+  function showPartyLedger() {
+    document.getElementById("dashboard").classList.add("hidden");
+    document.getElementById("ledgerArea").classList.remove("hidden");
+    let content = "";
+    for (let name in parties) {
+      let p = parties[name];
+      let rows = "";
+      let runningBal = parseFloat(p.opening) || 0;
+      rows += `<tr>
+        <td>--OPENING--</td>
+        <td>Opening Balance</td>
+        <td></td>
+        <td></td>
+        <td>${runningBal.toFixed(2)}</td>
+      </tr>`;
+      if (p.entries && p.entries.length) {
+        p.entries.forEach(e => {
+          runningBal += (parseFloat(e.debit)||0) - (parseFloat(e.credit)||0);
+          rows += `<tr>
+            <td>${e.date}</td>
+            <td>${e.narration || ""}</td>
+            <td>${e.debit ? e.debit : ""}</td>
+            <td>${e.credit ? e.credit : ""}</td>
+            <td>${runningBal.toFixed(2)}</td>
+          </tr>`;
+        });
+      }
+      content += `
+        <div class="partyLedgerBox">
+        <h4>${name}</h4>
+        <table>
+          <tr>
+            <th>Date</th>
+            <th>Narration</th>
+            <th>Debit</th>
+            <th>Credit</th>
+            <th>Balance</th>
+          </tr>
+          ${rows}
+        </table>
+        </div>
+      `;
+    }
+    document.getElementById("ledgerContent").innerHTML = content || "<p>No Party Found</p>";
+  }
+
+  function showPartyEntry() {
+    document.getElementById("dashboard").classList.add("hidden");
+    document.getElementById("entryArea").classList.remove("hidden");
+  }
+
+  function addEntry() {
+    let name = entryParty.value;
+    let narration = document.getElementById("narration").value;
+    let debit = parseFloat(document.getElementById("debit").value) || 0;
+    let credit = parseFloat(document.getElementById("credit").value) || 0;
+    if (!name) return alert("No party selected.");
+    let entry = {
+      date: new Date().toLocaleString(),
+      narration, debit, credit
+    };
+    parties[name].entries.push(entry);
+    localStorage.setItem("parties", JSON.stringify(parties));
+    alert("Entry saved");
+    document.getElementById("narration").value = "";
+    document.getElementById("debit").value = "";
+    document.getElementById("credit").value = "";
+  }
+
+  function showEditParty() {
+    document.getElementById("dashboard").classList.add("hidden");
+    document.getElementById("editArea").classList.remove("hidden");
+    updateDropdowns();
+  }
+
+  function updateDropdowns() {
+    let pList = Object.keys(parties);
+    let entryPartySel = document.getElementById("entryParty");
+    let editPartySel = document.getElementById("editParty");
+    entryPartySel.innerHTML = pList.map(p => `<option>${p}</option>`).join("");
+    editPartySel.innerHTML = pList.map(p => `<option>${p}</option>`).join("");
+    loadEditableParty();
+  }
+
+  function loadEditableParty() {
+    let name = editParty.value;
+    document.getElementById("editPartyName").value = name || '';
+  }
+
+  function saveEditedParty() {
+    let oldName = editParty.value;
+    let newName = editPartyName.value.trim();
+    if (!newName) return alert("Enter new name");
+    if (newName !== oldName && parties[newName]) {
+      alert("Party name already exists");
+      return;
+    }
+    parties[newName] = {...parties[oldName]};
+    if (newName !== oldName) delete parties[oldName];
+    localStorage.setItem('parties', JSON.stringify(parties));
+    alert("Updated");
+    backToMain();
+  }
+
+  function deleteParty() {
+    let name = editParty.value;
+    if (confirm("Delete Party?")) {
+      delete parties[name];
+      localStorage.setItem('parties', JSON.stringify(parties));
+      alert("Party deleted");
+      backToMain();
+      updateDropdowns();
+    }
+  }
+</script>
 </body>
 </html>
