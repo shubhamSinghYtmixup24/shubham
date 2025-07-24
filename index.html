@@ -1,133 +1,1121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Panel</title>
+  <meta charset="UTF-8">
+  <title>Browser Accounting App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    /* ====== Basic Resets ====== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: 'Segoe UI', Arial, sans-serif; }
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      margin: 0;
-      padding: 0;
+      background: var(--bg, #f3f5fb);
+      color: var(--fg, #1d2129);
+      min-height: 100vh;
+      transition: background 0.4s, color 0.4s;
     }
-    .container {
-      max-width: 400px;
-      margin: 80px auto;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px #ccc;
-      text-align: center;
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea {
+      font: inherit;
+      border: 1px solid #dde2e7;
+      border-radius: 5px;
+      outline: none;
+      padding: 0.5em 1em;
+      background: #fff;
+      transition: border .2s;
     }
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
+    button { cursor: pointer; background: var(--highlight, #2563eb); color: white;}
+    button[disabled] { background: #aaa; cursor: not-allowed;}
+    input:focus, select:focus, textarea:focus { border-color: #2563eb;}
+    label { font-weight: 500; display: block; margin-bottom: 0.4em;}
+    .hidden { display: none!important; }
+
+    /* ==== Layout ==== */
+    #app-root { display: flex; height: 100vh; }
+    nav#sidebar {
+      min-width: 210px; max-width: 210px;
+      background: var(--sbg, #21293c);
+      color: var(--sc, #eee);
+      display:flex; flex-direction:column;
+      transition:width .25s;
     }
-    button {
-      background: #007bff;
+    nav#sidebar.collapsed { min-width:65px; max-width:65px;}
+    nav#sidebar .sidebar-brand {
+      font-size:1.2em; letter-spacing:1px;
+      padding: 1.2em 1.2em 0.65em 1.2em; font-weight:700;
+      color: var(--highlight, #2563eb); text-shadow: 0 1px 0 #2225;
+    }
+    nav#sidebar ul {
+      list-style: none; flex:1;
+    }
+    nav#sidebar li {
+      margin: 0.7em 0;
+      opacity: 0.95;
+    }
+    nav#sidebar li.active {
+      background: var(--highlight, #4460f6);
       color: white;
-      border: none;
-      cursor: pointer;
+      border-radius: 5px;
     }
-    button:hover {
-      background: #0056b3;
+    nav#sidebar a {
+      display: flex; align-items: center;
+      padding: 0.6em 1.2em;
+      gap: 0.7em;
+      font-size:1em;
+      border-radius:5px;
+      transition:background .2s;
     }
-    #trackingInfo {
-      text-align: left;
-      margin-top: 20px;
+    nav#sidebar.collapsed .sidebar-label { display:none;}
+    nav#sidebar .sidebar-toggle {
+      margin:0.5em 0 1.2em 0.5em; background:none; border:none; color:#fff;
+      font-size:1.35em; align-self:flex-end;
     }
+
+    /* Navbar */
+    #navbar {
+      background: var(--sbg, #21293c); color:var(--sc,#fff);
+      height:62px; display:flex; align-items:center; justify-content:space-between;
+      padding:0 2em; position:relative; min-width:0;
+      box-shadow:0 1px 4px #1d212934;
+      z-index:1;
+    }
+    #navbar .company-label { font-weight:600; font-size:1.1em;}
+    #navbar .right-tools { display:flex; align-items:center; gap:16px;}
+    .mode-toggle {
+      cursor:pointer; border:none; background:transparent;
+      color:inherit; font-size:1.3em; margin-right:0.5em;
+    }
+
+    /* Main content */
+    main {
+      flex:1; min-width:0;
+      display:flex; flex-direction:column;
+      background: var(--bg, #f3f5fb);
+      transition: background 0.4s;
+    }
+    .module-view {
+      padding:2em 2em 2.5em 2em;
+      flex:1; overflow:auto;
+      animation: fadein 0.3s;
+    }
+    @keyframes fadein { from {opacity:0;} to {opacity:1;} }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      #app-root { flex-direction: column; }
+      nav#sidebar { min-width:60px; max-width:60px; }
+      nav#sidebar.collapsed { min-width:0px; max-width:0; }
+      #navbar { padding: 0 .5em; }
+      .module-view {padding:1em;}
+    }
+
+    @media (max-width:520px) {
+      .module-view {padding:0.3em;}
+      nav#sidebar {position:fixed; height:100vh;z-index:2000;}
+      main {margin-top:62px;}
+    }
+
+    /* Forms */
+    .form-card { background: #fff; border-radius:9px; box-shadow:0 6px 32px #32417012, 0 1.5px 4px #1235; padding:2em 1.4em 2.75em 1.4em; max-width:390px; margin:3em auto;}
+    .form-group { margin-bottom: 1.1em; }
+    .form-actions { margin-top:1.5em; display:flex; gap:0.9em;}
+    .error-msg { color: #c00; font-size:0.98em; margin:.3em 0;}
+
+    /* Tables and charts */
+    table { width: 100%; border-collapse: collapse; margin-top:1.15em; }
+    th, td { padding:0.5em 0.8em; text-align:left; font-size:1em;}
+    th { background: var(--thead, #e8edfc); color:#1d213a; border-bottom:1.5px solid #bcd;}
+    tr:nth-child(even) { background: #f9fafd; }
+    tr.total-row { background: var(--thead, #e8edfc); font-weight:600; }
+    .tr-mismatch { background: #e74d3c22;}
+    .text-success { color: #16ac6b;}
+    .text-danger { color: #e74c3c;}
+    .text-muted { color: #aaa;}
+    .badge { display:inline-block; min-width:44px; padding:0.2em .6em; border-radius:8px; font-size:0.97em;margin:0 .18em 0 0;background: #ccd5ff; color:#222;}
+    .badge.income {background:#d1f8d7;color:#16ac6b;}
+    .badge.expense {background:#ffe3df;color:#c0402f;}
+    .badge.asset {background:#e7f8fa;color:#098faa;}
+    .badge.equity {background:#e5d8ff;color:#7246aa;}
+    .badge.liability {background:#fdeccf;color:#d18101;}
+    .badge.auto {background: #aaa; color:#fff;}
+    /* Misc */
+    .small {font-size:0.97em;}
+    .mt-1 { margin-top:.98em;}
+    .mb-05 { margin-bottom:.5em;}
+    .mb-2 {margin-bottom:2em;}
+    .flex { display: flex; }
+    .justify-between { justify-content:space-between;}
+    .gap-1 { gap:0.8em;}
+    .mr-1 { margin-right:1em;}
+    .ml-1 {margin-left:1em;}
+    .text-center { text-align:center;}
+    .w-100 { width:100%;}
+    .align-middle { vertical-align:middle;}
+    .wrap {flex-wrap:wrap;}
+    .pointer { cursor:pointer;}
+    /* Modal */
+    .modal-backdrop {
+      position:fixed; left:0; top:0; right:0; bottom:0;
+      background:#222a 2.5em; z-index:9000; display:flex;justify-content:center;align-items:center;
+    }
+    .modal-content {
+      background: #fff; border-radius:9px; min-width:290px; min-height:120px; max-width:98vw;
+      padding:1.4em 1.2em; box-shadow: 0 3px 30px #18204a34;
+      position:relative; z-index:9200;
+    }
+
+    /* Dark mode */
+    body[data-theme='dark'] {
+      --bg:#1a2032;
+      --sbg:#151720;
+      --sc:#f5f5fa;
+      --highlight:#4e8df0;
+      --thead:#151742;
+      --fg: #e6eaf8;
+    }
+    body[data-theme='dark'] .form-card, body[data-theme='dark'] .modal-content {
+      background: #191e34;
+      color: #e8f3ff;
+      box-shadow: 0 6px 24px #24315066;
+    }
+    body[data-theme='dark'] table, body[data-theme='dark'] th, body[data-theme='dark'] tr, body[data-theme='dark'] td {
+      background:none; color:inherit;
+    }
+    body[data-theme='dark'] tr:nth-child(even) {background: #232b40;}
+    body[data-theme='dark'] input, body[data-theme='dark'] select, body[data-theme='dark'] textarea {
+      background: #151720; color: #e6eaf8; border-color: #2c3b61;
+    }
+    body[data-theme='dark'] input:focus, body[data-theme='dark'] select:focus, body[data-theme='dark'] textarea:focus {
+      border-color: #4e8df0;
+    }
+    ::selection {background: #cbe1fe;}
+    body[data-theme='dark'] ::selection {background: #415894; color:#fff;}
   </style>
 </head>
 <body>
+<div id="app-root" style="display:none;"></div>
 
-<div class="container" id="loginPage">
-  <h2>Admin Login</h2>
-  <input type="text" id="username" placeholder="Enter Username" />
-  <input type="password" id="password" placeholder="Enter Password" />
-  <button onclick="login()">Login</button>
+<!-- AUTH SCREENS -->
+<div id="auth-screens" style="min-height:100vh;display:flex;flex-direction:column;">
+  <div id="login-view" class="form-card">
+    <h2 class="mb-2">BookMe By Shubham Singh</h2>
+    <form autocomplete="off" id="login-form">
+      <div class="form-group">
+        <label>Company Name</label>
+        <input type="text" name="company" required placeholder="e.g. Acme Corp" maxlength="32" spellcheck="false" autocomplete="company" autofocus>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" required placeholder="••••••••••" maxlength="32">
+      </div>
+      <div class="form-actions">
+        <button type="submit">Login</button>
+        <button type="button" id="goto-register" style="background:#aaa;">Register</button>
+      </div>
+      <div class="error-msg" id="login-error"></div>
+    </form>
+  </div>
+
+  <div id="register-view" class="form-card hidden">
+    <h2 class="mb-2">Register your company</h2>
+    <form autocomplete="off" id="register-form">
+      <div class="form-group">
+        <label>Company Name</label>
+        <input type="text" name="company" required placeholder="Unique name" maxlength="32" spellcheck="false" autocomplete="company">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" required placeholder="At least 8 chars, strong" maxlength="32">
+        <div class="small text-muted">Password must be at least 8 chars and include letters, numbers, and a symbol.</div>
+      </div>
+      <div class="form-actions">
+        <button type="submit">Register</button>
+        <button type="button" id="goto-login" style="background:#aaa;">Back</button>
+      </div>
+      <div class="error-msg" id="register-error"></div>
+    </form>
+  </div>
 </div>
 
-<div class="container" id="adminPage" style="display: none;">
-  <h2>Welcome Admin</h2>
-  <div id="trackingInfo"></div>
-  <button onclick="logout()">Logout</button>
+<!-- MODAL DIALOG -->
+<div id="modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-content" id="modal-content"></div>
 </div>
 
 <script>
-  const loginPage = document.getElementById("loginPage");
-  const adminPage = document.getElementById("adminPage");
+// ====== LOCALSTORAGE DATA LAYOUT =======
+// companies List: localStorage['acc_companies'] = [companyname1, ...] // no two companies can have the same name
+// company data: localStorage['acc_'+companyname] = JSON.stringify({name, password, accounts, entries})
+// session: sessionStorage['acc_session'] = JSON.stringify({company, loginAt:ts, expiresAt:ts})
 
-  function detectDeviceType() {
-    const ua = navigator.userAgent;
-    if (/tablet|ipad|playbook|silk/i.test(ua)) return "Tablet";
-    if (/Mobile|iPhone|Android|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return "Mobile";
-    return "Desktop";
+// SHA-256 HELPER
+const sha256 = async (msg) => {
+  const msgBuffer = new TextEncoder().encode(msg);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+const sleep = ms => new Promise(res=>setTimeout(res,ms));
+
+const sanitizeInput = str => (''+str).replace(/[<>]/g, ''); // basic HTML sanitization
+
+/********** AUTHENTICATION LOGIC ********/
+const SESSION_DURATION_MIN = 60; // minutes
+
+const authScreens = document.getElementById('auth-screens');
+const loginView = document.getElementById('login-view');
+const registerView = document.getElementById('register-view');
+
+// Switch views for auth
+document.getElementById('goto-register').onclick = ()=>{loginView.classList.add('hidden');registerView.classList.remove('hidden');};
+document.getElementById('goto-login').onclick = ()=>{loginView.classList.remove('hidden');registerView.classList.add('hidden');};
+
+// Company registration
+document.getElementById('register-form').onsubmit = async function(e){
+  e.preventDefault();
+  let company = sanitizeInput(this.company.value.trim()), password = this.password.value;
+  let error='';
+  if(!company.match(/^[\w\- ]{2,32}$/i)) error="Company name must be 2-32 chars, letters/numbers/spaces.";
+  else if(password.length < 8) error="Password must be at least 8 chars.";
+  else if(!/[a-z]/i.test(password) || !/\d/.test(password) || !/[^a-z0-9]/i.test(password))
+    error = "Include letters, numbers and at least one symbol.";
+  let companies = _getCompanies();
+  if(companies.find(n=>n.toLowerCase()===company.toLowerCase())) error="This company already exists.";
+  document.getElementById('register-error').innerText=error;
+  if(error) return;
+  let passHash = await sha256(password);
+  // Standard COA
+  let coa = [
+    {id:'100', name:'Cash', type:'Asset', locked:true},
+    {id:'101', name:'Capital', type:'Equity', locked:true},
+    {id:'200', name:'Sales', type:'Income', locked:true},
+    {id:'201', name:'Purchases', type:'Expense', locked:true}
+  ];
+  localStorage.setItem('acc_'+company, JSON.stringify({
+    name:company, password:passHash, accounts:coa, entries:[]
+  }));
+  companies.push(company);
+  _saveCompanies(companies);
+  document.getElementById('register-error').innerText = "Company registered! You can now log in.";
+  await sleep(800);
+  loginView.classList.remove('hidden'); registerView.classList.add('hidden');
+};
+
+// Login
+document.getElementById('login-form').onsubmit = async function(e){
+  e.preventDefault();
+  let company = sanitizeInput(this.company.value.trim()), password = this.password.value, err='';
+  if(!company) err='Enter your company name.';
+  let companies = _getCompanies();
+  if(!companies.find(n=>n.toLowerCase()===company.toLowerCase())) err="Company not found. Check name or register first.";
+  let info = _getCompany(company);
+  if(!err){
+    let inputHash = await sha256(password);
+    if(!info || info.password!==inputHash) err="Incorrect password.";
   }
+  document.getElementById('login-error').innerText = err;
+  if(err) return;
+  // Set session
+  let now = +new Date(), expiresAt = now + 1000*60*SESSION_DURATION_MIN;
+  sessionStorage.setItem('acc_session', JSON.stringify({company:company, loginAt:now, expiresAt}));
+  authScreens.style.display='none';
+  launchApp(company);
+};
 
-  function trackVisitorInfo() {
-    fetch("https://ipapi.co/json/")
-      .then(res => res.json())
-      .then(data => {
-        const device = detectDeviceType();
-        const info = {
-          ip: data.ip,
-          city: data.city,
-          region: data.region,
-          country: data.country_name,
-          org: data.org,
-          device: device,
-          browser: navigator.userAgent,
-          time: new Date().toLocaleString()
-        };
-        console.log("📡 Visitor Info:", info);
+function _getCompanies(){
+  let l = localStorage.getItem('acc_companies');
+  if(!l) return [];
+  try{return JSON.parse(l)||[]}catch{ return []; }
+}
+function _saveCompanies(list) {
+  localStorage.setItem('acc_companies',JSON.stringify(list));
+}
+function _getCompany(company) {
+  let val = localStorage.getItem('acc_'+company);
+  try{ return val? JSON.parse(val) : null;}catch{return null;}
+}
+function _setCompany(company, data) {
+  localStorage.setItem('acc_'+company, JSON.stringify(data));
+}
 
-        document.getElementById("trackingInfo").innerHTML = `
-          <h3>📍 Location & Device Info</h3>
-          <p><strong>IP:</strong> ${info.ip}</p>
-          <p><strong>City:</strong> ${info.city}</p>
-          <p><strong>Region:</strong> ${info.region}</p>
-          <p><strong>Country:</strong> ${info.country}</p>
-          <p><strong>ISP:</strong> ${info.org}</p>
-          <p><strong>Device:</strong> ${info.device}</p>
-          <p><strong>Browser:</strong> ${info.browser}</p>
-          <p><strong>Time:</strong> ${info.time}</p>
-        `;
-      })
-      .catch(err => {
-        document.getElementById("trackingInfo").innerText = "Tracking failed!";
-      });
-  }
+/********** APP MAIN UI AND LOGIC **********/
 
-  function login() {
-    const user = document.getElementById("username").value.trim();
-    const pass = document.getElementById("password").value.trim();
+// ==== SIDEBAR NAVIGATION LABELS/ICONS ====
+const NAV = [
+  {id:'dashboard', label:'Dashboard', icon:"🏠"},
+  {id:'accounts', label:'Chart of Accounts', icon:"📑"},
+  {id:'journal', label:'Journal', icon:"📝"},
+  {id:'ledger', label:'Ledger', icon:"📗"},
+  {id:'trial', label:'Trial Balance', icon:"📊"},
+  {id:'pnl', label:'Profit & Loss', icon:"💰"},
+  {id:'bs', label:'Balance Sheet', icon:"🧾"},
+  {id:'settings', label:'Settings', icon:"⚙️"},
+];
 
-    if (user === "admin" && pass === "12345") {
-      localStorage.setItem("loggedIn", "yes");
-      showAdmin();
-    } else {
-      alert("Invalid login");
+// DARK/LIGHT MODE:
+let defaultTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)? 'dark' : 'light';
+let appTheme = localStorage.getItem('acc_theme') || defaultTheme;
+
+function launchApp(company, noSessionCheck){
+  // Remove existing app-root
+  document.getElementById('app-root').innerHTML = '';
+  const root = document.getElementById('app-root');
+  root.style.display='flex';
+  document.body.setAttribute('data-theme', appTheme);
+  buildLayout(root);
+  loadModule('dashboard');
+  setupSessionTimeout();
+}
+
+// Outer layout
+function buildLayout(root){
+  // Sidebar nav
+  let sidebar = document.createElement('nav');
+  sidebar.id='sidebar';
+  sidebar.innerHTML = `
+    <div class="sidebar-brand">Accounting</div>
+    <ul>${NAV.map(item=>
+      `<li id="nav-${item.id}" class="">
+        <a href="#" data-nav="${item.id}">${item.icon}
+        <span class="sidebar-label">${item.label}</span></a>
+      </li>`
+    ).join('')}</ul>
+    <button class="sidebar-toggle" title="Collapse sidebar" id="sidebar-toggler">☰</button>
+  `;
+  root.appendChild(sidebar);
+
+  // Main Section
+  let mainArea = document.createElement('main');
+  mainArea.innerHTML = `
+    <div id="navbar">
+      <span class="company-label">${sanitizeInput(currentCompany())}</span>
+      <div class="right-tools">
+        <button class="mode-toggle" id="theme-toggle"
+            title="Toggle dark/light mode">${appTheme==='dark' ? '🌙':'☀️'}</button>
+        <button onclick="logout()" style="background:#fe6262;font-size:0.97em;padding:.40em 1em;">Logout</button>
+      </div>
+    </div>
+    <div class="module-view" id="module-view"></div>
+  `;
+  root.appendChild(mainArea);
+
+  // Sidebar logic
+  document.getElementById('sidebar-toggler').onclick = ()=>{
+    sidebar.classList.toggle('collapsed');
+  };
+  NAV.forEach(item => {
+    document.querySelector(`[data-nav="${item.id}"]`).onclick = (e)=>{
+      e.preventDefault(); loadModule(item.id);
+      // Active highlighting
+      NAV.forEach(n=>document.getElementById('nav-'+n.id).classList.remove('active'));
+      document.getElementById('nav-'+item.id).classList.add('active');
+    };
+  });
+
+  document.getElementById('theme-toggle').onclick = ()=>{
+    appTheme = (appTheme==='dark')?'light':'dark';
+    document.body.setAttribute('data-theme', appTheme);
+    document.getElementById('theme-toggle').innerText = (appTheme==='dark')?'🌙':'☀️';
+    localStorage.setItem('acc_theme',appTheme);
+  };
+}
+
+/****** SESSION MANAGEMENT *******/
+function currentCompany(){
+  let sess = sessionStorage.getItem('acc_session');
+  try{
+    if(!sess) return null;
+    let obj = JSON.parse(sess);
+    if(!obj || !obj.company) return null;
+    if(+new Date() > obj.expiresAt){
+      sessionStorage.removeItem('acc_session');
+      return null;
     }
-  }
+    return obj.company;
+  }catch{ return null; }
+}
+function isSessionValid(){
+  return !!currentCompany();
+}
+function logout(){
+  sessionStorage.removeItem('acc_session');
+  window.location.reload();
+}
+function setupSessionTimeout(){
+  let sess = sessionStorage.getItem('acc_session');
+  if(!sess) return;
+  let rem = JSON.parse(sess).expiresAt - (+new Date());
+  if(rem<=0) { logout(); return; }
+  setTimeout(()=>{logout();}, rem + 100);
+}
 
-  function logout() {
-    localStorage.removeItem("loggedIn");
-    location.reload();
-  }
+/**** MODULE LOADERS ****/
+function loadModule(name){
+  // Always check session!
+  let company = currentCompany();
+  if(!company){ window.location.reload(); return }
+  // Highlight active menu
+  NAV.forEach(n=>document.getElementById('nav-'+n.id).classList.remove('active'));
+  document.getElementById('nav-'+name).parentElement.classList.add('active');
+  let mod = document.getElementById('module-view');
+  mod.innerHTML = '<div style="opacity:.4;margin-top:0.8em;">Loading...</div>';
+  setTimeout(()=>{ // let animation play
+    let fn = {
+      dashboard: showDashboard,
+      accounts: showAccounts,
+      journal: showJournal,
+      ledger: showLedger,
+      trial: showTrial,
+      pnl: showPnL,
+      bs: showBalanceSheet,
+      settings: showSettings
+    };
+    fn[name]();
+  }, 125);
+}
 
-  function showAdmin() {
-    loginPage.style.display = "none";
-    adminPage.style.display = "block";
-    trackVisitorInfo();
+/******* MODAL SUPPORT *******/
+function showModal(contentHtml, onConfirm, confirmLabel, cancelLabel='Cancel'){
+  let backdrop = document.getElementById('modal-backdrop');
+  let modal = document.getElementById('modal-content');
+  let str = `<div>${contentHtml}</div>`;
+  if(onConfirm){
+    str += `<div class="form-actions mt-1" style="justify-content:flex-end;">
+      <button id="modal-cancel">${cancelLabel}</button>
+      <button id="modal-ok" style="background:#ee3333;">${confirmLabel||'Confirm'}</button>
+    </div>`;
   }
+  modal.innerHTML = str;
+  backdrop.classList.remove('hidden');
+  if(onConfirm){
+    document.getElementById('modal-ok').onclick = ()=>{backdrop.classList.add('hidden'); onConfirm(true); };
+    document.getElementById('modal-cancel').onclick = ()=>{backdrop.classList.add('hidden'); onConfirm(false); };
+  }else{
+    modal.onclick = ()=>{backdrop.classList.add('hidden');};
+  }
+}
+window.onclick = function(e){
+  let m=document.getElementById('modal-backdrop');
+  if(e.target===m) m.classList.add('hidden');
+};
 
-  // Auto login if already logged in
-  if (localStorage.getItem("loggedIn") === "yes") {
-    showAdmin();
+/****** DASHBOARD ******/
+function showDashboard(){
+  let d = document.getElementById('module-view');
+  let info = _getCompany(currentCompany());
+  let totalAccs = info.accounts.length, entries = info.entries.length;
+  let balance = computeBalSheet(info.accounts, info.entries);
+  d.innerHTML=`
+    <h2>Welcome, ${sanitizeInput(info.name)}!</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:3em 2em;margin-top:1.5em;">
+      <div><div style="font-size:1.6em;font-weight:600;">${totalAccs}</div><div class="small text-muted">Accounts</div></div>
+      <div><div style="font-size:1.6em;font-weight:600;">${entries}</div><div class="small text-muted">Journal Entries</div></div>
+      <div>
+        <div style="font-size:1.27em;font-weight:600;" class="text-success">₹${balance.assets.toLocaleString()}</div>
+        <div class="small text-muted">Total Assets</div>
+      </div>
+      <div>
+        <div style="font-size:1.27em;font-weight:600;" class="text-danger">₹${balance.liabilities.toLocaleString()}</div>
+        <div class="small text-muted">Total Liabilities</div>
+      </div>
+      <div>
+        <div style="font-size:1.27em;font-weight:600;" style="color:#498cff">₹${balance.equity.toLocaleString()}</div>
+        <div class="small text-muted">Equity</div>
+      </div>
+    </div>
+    <hr class="mt-1 mb-2">
+    <div style="margin-top:1.2em;">
+      <div style="font-size:1.17em;font-weight:500;">Quick Links</div>
+      <div class="flex gap-1 wrap mt-1">
+        <a href="#" onclick="loadModule('accounts')" class="badge asset">Chart of Accounts</a>
+        <a href="#" onclick="loadModule('journal')" class="badge">Journal</a>
+        <a href="#" onclick="loadModule('ledger')" class="badge">Ledger</a>
+        <a href="#" onclick="loadModule('trial')" class="badge">Trial Balance</a>
+        <a href="#" onclick="loadModule('pnl')" class="badge income">Profit & Loss</a>
+        <a href="#" onclick="loadModule('bs')" class="badge equity">Balance Sheet</a>
+        <a href="#" onclick="loadModule('settings')" class="badge">Settings</a>
+      </div>
+    </div>
+  `;
+}
+
+/********* ACCOUNTS CHART (COA) *********/
+function showAccounts(){
+  let info = _getCompany(currentCompany());
+  let d = document.getElementById('module-view');
+  // Group by type
+  let group = (type) => info.accounts.filter(a=>a.type===type);
+  let order = ['Asset','Liability','Equity','Income','Expense'];
+  d.innerHTML = `
+    <div class="flex justify-between align-middle mb-2">
+      <h2>Chart of Accounts</h2>
+      <button id="add-account-btn">+ Add Account</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:2.7em 2em;">
+    ${order.map(type=>`
+      <div style="min-width:180px;flex:1;">
+        <h4 style="margin-bottom:.3em;">${type}s</h4>
+        <table>
+          <thead>
+            <tr><th>Account</th><th></th><th></th></tr>
+          </thead>
+          <tbody>
+          ${group(type).map(acc=>`
+            <tr>
+              <td>${sanitizeInput(acc.name)} <span class="badge ${acc.type.toLowerCase()}">${acc.type}</span> ${acc.locked?'<span class="badge auto">auto</span>':''}</td>
+              <td>
+                ${acc.locked?'':'<a href="#" onclick="editAccount(\''+acc.id+'\')">✏️</a>'}
+              </td>
+              <td>
+                ${acc.locked?'':'<a href="#" onclick="deleteAccount(\''+acc.id+'\')">🗑️</a>'}
+              </td>
+            </tr>
+          `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `).join('')}
+    </div>
+  `;
+  document.getElementById('add-account-btn').onclick = addAccountModal;
+}
+
+function addAccountModal(){
+  showModal(`
+    <h3>Add New Account</h3>
+    <form id="add-acc-form">
+    <div class="form-group"><label>Account Name</label>
+      <input required name="acc" pattern=".{2,32}" maxlength="32" placeholder="Name">
+    </div>
+    <div class="form-group"><label>Type</label>
+      <select name="type" required>
+        <option>Asset</option><option>Liability</option>
+        <option>Equity</option><option>Income</option>
+        <option>Expense</option>
+      </select>
+    </div>
+    <div class="error-msg" id="addacc-err"></div>
+    <button type="submit">Add Account</button></form>
+  `);
+  document.getElementById('add-acc-form').onsubmit = function(e){
+    e.preventDefault();
+    let acc = sanitizeInput(this.acc.value.trim()), type = this.type.value;
+    if(acc.length<2) document.getElementById('addacc-err').innerText = "Name too short.";
+    else{
+      let info = _getCompany(currentCompany());
+      if(info.accounts.find(a=>a.name.toLowerCase()===acc.toLowerCase())){
+        document.getElementById('addacc-err').innerText = "Account already exists.";
+      }else{
+        let newid = Math.floor(1000 + Math.random()*9000)+'';
+        info.accounts.push({id:newid,name:acc,type,locked:false});
+        _setCompany(currentCompany(),info); 
+        document.getElementById('modal-backdrop').classList.add('hidden');
+        showAccounts();
+      }
+    }
+  };
+}
+window.editAccount = function(accid){
+  let info = _getCompany(currentCompany());
+  let acc = info.accounts.find(a=>a.id==accid);
+  showModal(`
+    <h3>Edit Account</h3>
+    <form id="edit-acc-form">
+      <div class="form-group"><label>Account Name</label>
+        <input required name="acc" value="${sanitizeInput(acc.name)}" maxlength="32" pattern=".{2,32}">
+      </div>
+      <div class="form-group"><label>Type</label>
+        <select name="type">${['Asset','Liability','Equity','Income','Expense']
+        .map(t=>`<option${t==acc.type?' selected':''}>${t}</option>`).join('')}</select>
+      </div>
+      <div class="error-msg" id="editacc-err"></div>
+      <button type="submit">Save</button>
+    </form>
+  `);
+  document.getElementById('edit-acc-form').onsubmit=function(e){
+    e.preventDefault();
+    let name=sanitizeInput(this.acc.value.trim()),type=this.type.value;
+    if(info.accounts.find(a=>a.name.toLowerCase()===name.toLowerCase() && a.id!=accid))
+      document.getElementById('editacc-err').innerText = "Duplicate account name.";
+    else{
+      acc.name = name; acc.type=type;
+      _setCompany(currentCompany(),info);
+      document.getElementById('modal-backdrop').classList.add('hidden');
+      showAccounts();
+    }
+  };
+};
+window.deleteAccount = function(accid){
+  let info = _getCompany(currentCompany());
+  let acc = info.accounts.find(a=>a.id==accid);
+  if(acc.locked){ alert("System account cannot be deleted."); return; }
+  showModal(`<b>Delete account "${sanitizeInput(acc.name)}"?</b>
+    <div class="small text-danger">All associated journal entries will remain.</div>`,
+    ok=>{
+      if(ok){
+        info.accounts = info.accounts.filter(a=>a.id!=accid);
+        _setCompany(currentCompany(),info);
+        showAccounts();
+      }
+    },'Delete');
+};
+
+/************* JOURNAL ENTRIES ************/
+function showJournal(){
+  let d = document.getElementById('module-view');
+  let info = _getCompany(currentCompany()),
+      accounts = info.accounts,
+      entries = info.entries.slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let accOptions = type=> accounts.filter(a=>type? a.type==type : true)
+    .map(a=>`<option value="${a.id}">${sanitizeInput(a.name)} (${a.type})</option>`).join('');
+  // Add Journal Entry Form
+  d.innerHTML = `
+    <h2>Journal Entries</h2>
+    <div class="form-card" style="padding:1.2em 1em;margin:.3em 0 2em 0;max-width:470px;">
+      <form id="journal-form" class="flex wrap gap-1">
+        <div><label>Date</label>
+          <input type="date" name="date" required max="${new Date().toISOString().split('T')[0]}" value="${new Date().toISOString().split('T')[0]}">
+        </div>
+        <div><label>Debit Account</label>
+          <select name="debit" required>${accOptions()}</select>
+        </div>
+        <div><label>Credit Account</label>
+          <select name="credit" required>${accOptions()}</select>
+        </div>
+        <div><label>Amount</label>
+          <input type="number" name="amount" min="1" step="0.01" required placeholder="₹">
+        </div>
+        <div style="min-width:100%;"><label>Description</label>
+          <input type="text" name="desc" maxlength="64" required>
+        </div>
+        <div style="min-width:100%;margin-top:.4em;">
+          <button type="submit" id="add-entry">Add Entry</button>
+        </div>
+      </form>
+      <div class="error-msg" id="journal-error" style="margin-top:.3em;"></div>
+    </div>
+    <div style="margin-bottom:1.5em;">
+      <b>Total Entries:</b> <span class="text-success">${entries.length}</span>
+    </div>
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Amount</th><th></th></tr>
+      </thead>
+      <tbody>
+      ${entries.length==0?'<tr><td colspan="6" class="text-center text-muted">No entries made yet.</td></tr>': entries.map((jn,i)=>{
+        let debitAcc = accounts.find(a=>a.id==jn.debit)||{name:'[Missing]'}, 
+            creditAcc = accounts.find(a=>a.id==jn.credit)||{name:'[Missing]'};
+        return `<tr>
+          <td>${jn.date}</td>
+          <td>${sanitizeInput(jn.desc)}</td>
+          <td>${sanitizeInput(debitAcc.name)}</td>
+          <td>${sanitizeInput(creditAcc.name)}</td>
+          <td>₹${Number(jn.amount).toLocaleString()}</td>
+          <td><a href="#" onclick="deleteEntry(${i})">🗑</a></td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+  // Add handler
+  document.getElementById('journal-form').onsubmit = function(e){
+    e.preventDefault(); let err='';
+    let date=this.date.value, deb=this.debit.value, cred=this.credit.value,
+        amt=Number(this.amount.value), desc=sanitizeInput(this.desc.value.trim());
+    if(!date||!deb||!cred||!amt||amt<=0||!desc) err="Fill all fields with valid values.";
+    if(deb===cred) err="Debit & Credit accounts must differ.";
+    if(isNaN(amt) || amt<=0) err="Amount must be positive.";
+    if(desc.length<2) err="Description required.";
+    document.getElementById('journal-error').innerText=err;
+    if(err) return;
+    // push double entry
+    info.entries.push({date, debit:deb, credit:cred, amount:amt, desc});
+    _setCompany(currentCompany(), info);
+    showJournal();
+  };
+}
+window.deleteEntry = function(idx){
+  let info = _getCompany(currentCompany());
+  showModal("Delete this journal entry?",ok=>{
+    if(ok){
+      info.entries.splice(idx,1);
+      _setCompany(currentCompany(),info);
+      showJournal();
+    }
+  },'Delete');
+};
+
+/*********** LEDGER VIEW ***********/
+function showLedger(){
+  let info = _getCompany(currentCompany());
+  let accounts = info.accounts, entries = info.entries;
+  let d = document.getElementById('module-view');
+
+  // Filter: By account type & date range
+  let types = ['All','Asset','Liability','Equity','Income','Expense'];
+  d.innerHTML = `
+    <h2>Ledger</h2>
+    <form id="ledger-filter" class="flex gap-1 wrap mt-1 mb-2 small">
+      <div>
+        <label>Account Type</label>
+        <select name="type">${types.map(t=>`<option>${t}</option>`).join('')}</select>
+      </div>
+      <div>
+        <label>From</label>
+        <input type="date" name="from">
+      </div>
+      <div>
+        <label>To</label>
+        <input type="date" name="to">
+      </div>
+      <button style="padding:.29em 1.2em;height:2.15em;margin-top:1.1em;" type="submit">Apply</button>
+    </form>
+    <div id="ledger-views"></div>
+  `;
+  let form = document.getElementById('ledger-filter');
+  form.onsubmit = function(e){
+    e.preventDefault();
+    renderLedgerViews(this.type.value, this.from.value, this.to.value);
+  };
+  renderLedgerViews();
+  function renderLedgerViews(type='All', from, to){
+    let start = from ? new Date(from) : new Date('2000-01-01'),
+        end = to ? new Date(to) : new Date('2999-12-31');
+    let filter = acc=> (type==='All' || acc.type===type);
+    let html = '';
+    accounts.filter(filter).forEach(acc=>{
+      // For each account, get all enteries (credit or debit)
+      let lines = entries.filter(jn=>
+        (jn.debit===acc.id || jn.credit===acc.id) &&
+        (new Date(jn.date)>=start && new Date(jn.date)<=end) )
+        .sort((a,b)=>new Date(a.date)-new Date(b.date));
+      if(lines.length==0) return;
+      let bal = 0, ledgerRows='';
+      lines.forEach(jn=>{
+        let debit = (jn.debit===acc.id)? jn.amount : '', credit = (jn.credit===acc.id)? jn.amount: '';
+        bal += debit? Number(debit) : 0;
+        bal -= credit? Number(credit) : 0;
+        ledgerRows += `<tr>
+          <td>${jn.date}</td>
+          <td>${sanitizeInput(jn.desc)}</td>
+          <td>${debit?('₹'+Number(debit).toLocaleString()):''}</td>
+          <td>${credit?('₹'+Number(credit).toLocaleString()):''}</td>
+          <td>${bal>=0?'<span class="text-success">₹'+bal.toLocaleString()+'</span>':'<span class="text-danger">₹'+bal.toLocaleString()+'</span>'}</td>
+        </tr>`;
+      });
+      html += `<div style="border-bottom:1px solid #dde4ee;margin-bottom:2em;">
+        <h4 style="margin-bottom:.3em;">${sanitizeInput(acc.name)} <span class="badge ${acc.type.toLowerCase()}">${acc.type}</span></h4>
+        <div style="overflow-x:auto;"><table>
+          <thead><tr><th>Date</th><th>Narration</th><th>Debit</th><th>Credit</th><th>Running Balance</th></tr></thead>
+          <tbody>${ledgerRows}</tbody>
+        </table></div>
+      </div>`;
+    });
+    document.getElementById('ledger-views').innerHTML = html ? html :
+      '<div class="text-muted mt-1 small text-center">No transactions in the selected range/type.</div>';
   }
+}
+
+/************** TRIAL BALANCE *************/
+function showTrial(){
+  let info = _getCompany(currentCompany());
+  let accounts = info.accounts, entries = info.entries;
+  let d = document.getElementById('module-view');
+  // Compute TB
+  let tb = {}, debitSum=0, creditSum=0;
+  accounts.forEach(acc=>{
+    let val = 0;
+    entries.forEach(jn=>{
+      if(jn.debit===acc.id) val+=Number(jn.amount);
+      if(jn.credit===acc.id) val-=Number(jn.amount);
+    });
+    tb[acc.id] = val;
+    if(acc.type=='Asset' || acc.type=='Expense') debitSum+= (val>0?val:0);
+    else creditSum+=(val<0?-val:0);
+  });
+
+  // Render TB
+  d.innerHTML = `
+    <h2>Trial Balance</h2>
+    <table>
+      <thead>
+        <tr><th>Account</th><th>Debit (₹)</th><th>Credit (₹)</th></tr>
+      </thead>
+      <tbody>
+      ${accounts.map(acc=>{
+        let amt = tb[acc.id]||0;
+        if(acc.type=='Asset'||acc.type=='Expense')
+          return `<tr><td>${sanitizeInput(acc.name)}</td>
+                    <td>${amt>0?amt.toLocaleString():''}</td><td>${amt<0?(-amt).toLocaleString():''}</td></tr>`;
+        else
+          return `<tr><td>${sanitizeInput(acc.name)}</td>
+                    <td>${amt<0?(-amt).toLocaleString():''}</td><td>${amt>0?amt.toLocaleString():''}</td></tr>`;
+      }).join('')}
+      <tr class="total-row${Math.abs(debitSum-creditSum)>0.001?' tr-mismatch':''}">
+        <td><b>Totals</b></td>
+        <td><b>${debitSum.toLocaleString()}</b></td>
+        <td><b>${creditSum.toLocaleString()}</b></td>
+      </tr>
+      </tbody>
+    </table>
+    <div class="mt-1 small ${Math.abs(debitSum-creditSum)>0.001? 'text-danger':'text-success'}">
+      ${Math.abs(debitSum-creditSum)>0.001?
+        '**Discrepancy! Debits and credits do not match.**':
+        'Trial Balance is balanced.'}
+    </div>
+  `;
+}
+
+/********* PROFIT & LOSS REPORT ***********/
+function showPnL(){
+  let info = _getCompany(currentCompany());
+  let entries = info.entries, accounts = info.accounts;
+  let d = document.getElementById('module-view');
+
+  // Filter: Month, year
+  let dateArr = entries.map(jn=>jn.date);
+  let minYear = dateArr.length? (new Date(Math.min(...dateArr.map(d=>+new Date(d)))).getFullYear()) : (new Date()).getFullYear();
+  let maxYear = (new Date()).getFullYear();
+  let months = ['All','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let years = [];
+  for(let y=minYear; y<=maxYear; y++) years.push(y);
+
+  d.innerHTML = `
+    <h2>Profit & Loss</h2>
+    <form id="pnl-filter" class="flex gap-1 wrap mt-1 mb-2 small">
+      <div>
+        <label>Month</label>
+        <select name="month">${months.map((m,i)=>`<option value="${i}">${m}</option>`)}</select>
+      </div>
+      <div>
+        <label>Year</label>
+        <select name="year">${years.map((y)=>`<option>${y}</option>`)}</select>
+      </div>
+      <button style="padding:.29em 1.2em;height:2.15em;margin-top:1.1em;" type="submit">Apply</button>
+    </form>
+    <div id="pnl-view"></div>
+  `;
+  let form = document.getElementById('pnl-filter');
+  form.onsubmit = function(e){
+    e.preventDefault();
+    renderPnL(this.month.value,this.year.value);
+  };
+  renderPnL();
+  function renderPnL(month=0, year=maxYear){
+    let incs=[], exps=[];
+    accounts.filter(a=>['Income','Expense'].includes(a.type)).forEach(acc=>{
+      let lines = entries.filter(jn=>{
+        let d = new Date(jn.date), 
+            m_ok = (month==0 || d.getMonth()+1==month),
+            y_ok = (''+d.getFullYear()=== ''+year);
+        if(jn.debit===acc.id)
+          return (acc.type=='Expense') && m_ok && y_ok;
+        if(jn.credit===acc.id)
+          return (acc.type=='Income') && m_ok && y_ok;
+        return false;
+      });
+      let amt = lines.reduce((s,jn)=>s+Number(jn.amount),0);
+      if(acc.type=='Income') incs.push({acc,amt:amt});
+      else exps.push({acc,amt:amt});
+    });
+    let totalInc = incs.reduce((t,x)=>t+(x.amt||0),0);
+    let totalExp = exps.reduce((t,x)=>t+(x.amt||0),0);
+    let net = totalInc-totalExp;
+    let html = `
+      <table>
+        <thead>
+          <tr><th>Account</th><th>Amount (₹)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="2"><b>Income</b></td></tr>
+          ${incs.length?incs.map(x=>`<tr>
+            <td>${sanitizeInput(x.acc.name)}</td><td class="text-success">₹${x.amt.toLocaleString()}</td>
+          </tr>`).join(''):'<tr><td colspan="2" class="text-muted">None</td></tr>'}
+          <tr class="total-row"><td><b>Total Income</b></td><td><b>₹${totalInc.toLocaleString()}</b></td></tr>
+          <tr><td colspan="2"><b>Expenses</b></td></tr>
+          ${exps.length?exps.map(x=>`<tr>
+            <td>${sanitizeInput(x.acc.name)}</td><td class="text-danger">₹${x.amt.toLocaleString()}</td>
+          </tr>`).join(''):'<tr><td colspan="2" class="text-muted">None</td></tr>'}
+          <tr class="total-row"><td><b>Total Expenses</b></td><td><b>₹${totalExp.toLocaleString()}</b></td></tr>
+        </tbody>
+      </table>
+      <div class="mt-1">
+        <b>Net Profit/(Loss):</b> <span class="${net>=0?'text-success':'text-danger'}">₹${net.toLocaleString()}</span>
+      </div>
+    `;
+    document.getElementById('pnl-view').innerHTML = html;
+  }
+}
+
+/********** BALANCE SHEET ********/
+function showBalanceSheet(){
+  let info = _getCompany(currentCompany()), d = document.getElementById('module-view');
+  let {assets, liabilities, equity} = computeBalSheet(info.accounts, info.entries);
+  let group = type => info.accounts.filter(a=>a.type===type);
+  let accBal = acc=>{
+    let b=0; info.entries.forEach(jn=>{
+      if(jn.debit===acc.id) b+=Number(jn.amount);
+      if(jn.credit===acc.id) b-=Number(jn.amount);
+    }); return b;
+  };
+  d.innerHTML = `
+    <h2>Balance Sheet</h2>
+    <div class="flex wrap" style="gap:3em 2em;">
+    <div>
+      <h4>Assets</h4>
+      <table>
+        <tbody>
+        ${group('Asset').map(acc=>`<tr>
+          <td>${sanitizeInput(acc.name)}</td>
+          <td class="text-success">₹${accBal(acc).toLocaleString()}</td>
+        </tr>`).join('')}
+        <tr class="total-row"><td><b>Total Assets</b></td><td><b>₹${assets.toLocaleString()}</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h4>Liabilities</h4>
+      <table>
+        <tbody>
+        ${group('Liability').map(acc=>`<tr>
+          <td>${sanitizeInput(acc.name)}</td>
+          <td class="text-danger">₹${accBal(acc).toLocaleString()}</td>
+        </tr>`).join('')}
+        <tr class="total-row"><td><b>Total Liabilities</b></td><td><b>₹${liabilities.toLocaleString()}</b></td></tr>
+        </tbody>
+      </table>
+      <h4 style="margin-top:1.5em;">Equity</h4>
+      <table>
+        <tbody>
+        ${group('Equity').map(acc=>`<tr>
+          <td>${sanitizeInput(acc.name)}</td>
+          <td style="color:#498cff">₹${accBal(acc).toLocaleString()}</td>
+        </tr>`).join('')}
+        <tr class="total-row"><td><b>Total Equity</b></td><td><b>₹${equity.toLocaleString()}</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    </div>
+  `;
+}
+function computeBalSheet(accounts, entries){
+  let s={assets:0,liabilities:0,equity:0};
+  accounts.forEach(acc=>{
+    let b=0; entries.forEach(jn=>{
+      if(jn.debit===acc.id) b+=Number(jn.amount);
+      if(jn.credit===acc.id) b-=Number(jn.amount);
+    });
+    if(acc.type=='Asset') s.assets+=b;
+    else if(acc.type=='Liability') s.liabilities+=b<0?-b:b;
+    else if(acc.type=='Equity') s.equity+=b;
+  });
+  return s;
+}
+
+/*************** SETTINGS ***************/
+function showSettings(){
+  let info = _getCompany(currentCompany()), d = document.getElementById('module-view');
+  d.innerHTML = `
+    <h2>Settings</h2>
+    <form id="update-co-form" class="form-card" style="max-width:390px">
+      <h4>Update Company Name</h4>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" name="name" value="${sanitizeInput(info.name)}" required pattern=".{2,32}">
+      </div>
+      <button>Update Name</button>
+      <div class="error-msg" id="set-name-err"></div>
+    </form>
+    <form id="update-pw-form" class="form-card mt-1" style="max-width:390px">
+      <h4>Change Password</h4>
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" name="curpw" required>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" name="pw" required>
+      </div>
+      <button>Change Password</button>
+      <div class="error-msg" id="set-pw-err"></div>
+    </form>
+    <div class="form-card mt-1" style="max-width:390px">
+      <button style="background:#e32727;" id="delete-company-btn">Delete Company</button>
+    </div>
+  `;
+  // Name update
+  document.getElementById('update-co-form').onsubmit = function(e){
+    e.preventDefault();
+    let n = sanitizeInput(this.name.value.trim());
+    let companies = _getCompanies();
+    let err='';
+    if(!n.match(/^[\w\- ]{2,32}$/i)) err="Invalid name.";
+    else if(companies.some(name=>name.toLowerCase()===n.toLowerCase() && name!==info.name)) err="Duplicate name.";
+    if(err){document.getElementById('set-name-err').innerText=err;return;}
+    // update
+    companies[companies.indexOf(info.name)] = n;
+    info.name=n;
+    _saveCompanies(companies);
+    _setCompany(n,info);
+    if(n!==currentCompany()){ // rename localStorage key
+      localStorage.removeItem('acc_'+currentCompany());
+    }
+    // update session
+    let sess = JSON.parse(sessionStorage.getItem('acc_session'));
+    sess.company=n; sessionStorage.setItem('acc_session',JSON.stringify(sess));
+    showModal("Company name updated successfully."); showSettings();
+  };
+  // Password update
+  document.getElementById('update-pw-form').onsubmit = async function(e){
+    e.preventDefault();
+    let cur = this.curpw.value, nw = this.pw.value, err='';
+    if(nw.length<8 || !/[a-z]/i.test(nw) || !/\d/.test(nw) || !/[^a-z0-9]/i.test(nw))
+      err="At least 8 chars, include letter, digit, symbol.";
+    let hash = await sha256(cur);
+    if(info.password!==hash) err="Current password incorrect.";
+    if(err){document.getElementById('set-pw-err').innerText=err;return;}
+    info.password = await sha256(nw);
+    _setCompany(currentCompany(),info);
+    showModal('Password changed.');
+    showSettings();
+  };
+  // Delete company
+  document.getElementById('delete-company-btn').onclick = ()=>{
+    showModal(`<b>Confirm deletion:</b><br>
+      This will permanently delete all your company data.<br>
+      <br>
+      Type <b>"${sanitizeInput(info.name)} DELETE"</b> to confirm.<br>
+      <input type="text" id="del-conf-inp" style="margin:0.3em 0;width:180px;">`,
+      ok=>{
+        if(ok){
+          let val = document.getElementById('del-conf-inp').value;
+          if(val !== info.name+' DELETE') showModal("Incorrect confirmation string.");
+          else{
+            let companies=_getCompanies().filter(n=>n!==info.name);
+            _saveCompanies(companies);
+            localStorage.removeItem('acc_'+info.name);
+            logout();
+          }
+        }
+      }, 'Delete Company');
+  };
+}
+
+/******* INIT/BOOTSTRAP *******/
+function startup(){
+  // SESSION CHECK
+  if(isSessionValid()){
+    document.getElementById('auth-screens').style.display='none';
+    document.getElementById('app-root').style.display='flex';
+    launchApp(currentCompany());
+  }else{
+    document.getElementById('auth-screens').style.display='flex';
+  }
+}
+
+window.onload = startup;
 </script>
-
 </body>
 </html>
